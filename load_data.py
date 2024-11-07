@@ -6,9 +6,9 @@ from shiny import ui
 
 app_dir = Path(__file__).parent
 
-clim_df = pd.read_csv(app_dir/'data\\climate_all.csv')
-enso_df = pd.read_csv(app_dir/'data\\enso.csv')
-iod_df = pd.read_csv(app_dir/'data\\dmi_iod_v01.csv')
+clim_df = pd.read_csv(app_dir/'data/climate_all.csv')
+enso_df = pd.read_csv(app_dir/'data/enso.csv')
+iod_df = pd.read_csv(app_dir/'data/dmi_iod_v01.csv')
 
 enso_full = pd.merge(
     left=enso_df,
