@@ -60,8 +60,3 @@ seasons = pd.merge(
     on='season',
     how='inner'
 )
-
-rainfall_txt = ui.markdown(open(app_dir/'rainfall_txt.md').read())
-failed_rain_txt = ui.markdown(open(app_dir/'failed_rain_txt.md').read())
-enso_iod_txt = ui.markdown(open(app_dir/'enso_iod_txt.md').read())
-corr_txt = ui.markdown(open(app_dir/'corr_txt.md').read())

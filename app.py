@@ -10,83 +10,83 @@ import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
 
-from load_data import app_dir, df, seasons, rainfall_txt, failed_rain_txt, enso_iod_txt, corr_txt
+from load_data import df, seasons
+import load_text
 
 MONTHS = ['J','F','M','A','M','J','J','A','S','O','N','D']
 YEARS = [str(yr) for yr in df.year.unique()]
 
 app_ui = ui.page_navbar(
     ui.nav_panel(
-        'Climate',
-        'Analysis of historical climate data',
+        'Rainfall',
+        # 'Analysis of historical climate data',
         ui.layout_sidebar(
             ui.sidebar(
-                # ui.input_selectize(
-                #     id='clim_param', label='Parameter', choices=['Rainfall', 'LST', 'NDVI'], selected='Rainfall'
-                # ),
+                ui.markdown("""Explore annual precipitations. 
+                            Use the slider to select the year range for calculating the mean, 
+                            and the dropdown to select the year for the monthly rainfall plot. 
+                            The plots will update automatically."""),
                 ui.input_slider(
                     id='year_slide', label='Year range', min=df.year.min(), max=df.year.max(), value=[df.year.min(),df.year.max()]
                 ),
-                ui.input_selectize(
-                    id='year', label='Year', choices=YEARS, selected=YEARS[-1]
-                )
+                # ui.input_selectize(
+                #     id='year', label='Year', choices=YEARS, selected=YEARS[-1]
+                # ),
+                open='open',
             ),
             ui.layout_columns(
                 ui.card(
-                    ui.div(rainfall_txt),
-                ),
-                ui.card(
                     output_widget('plot_rainfall'),
                     full_screen=True
+                ),
+                ui.card(
+                    ui.div(load_text.annual_prec),
                 ),
                 ui.card(
                     output_widget('plot_rainfall_distribution'),
                     full_screen=True
                 ),
                 ui.card(
-                    output_widget('plot_rainfall_vs_mean'),
-                    full_screen=True
+                    ui.div(load_text.rainfall_distr),
                 ),
-                col_widths=(12,6,6,12)
-            )
-        ),
-    ),
-    ui.nav_panel(
-        'Rainy Seasons',
-        'Interpretation of seasonal data',
-        ui.layout_sidebar(
-            ui.sidebar(
-                ui.input_slider(
-                    id='season_threshold', label='Threshold', min=0, max=100, value=70, post='%'
-                ),
-            ),
-            ui.layout_columns(
-                ui.card(
-                    ui.div(failed_rain_txt),
-                ),
-                ui.card(
-                    output_widget('plot_failed_rains'),
-                    full_screen=True
-                ),
-                col_widths=(12,12)
+                # ui.card(
+                #     output_widget('plot_rainfall_vs_mean'),
+                #     full_screen=True
+                # ),
+                # col_widths=(12,6,6,12)
+                col_widths=(12)
             )
         ),
     ),
     ui.nav_panel(
         'ENSO & IOD',
-        'Interconnection with El Nino Southern Oscillation and Indian Ocean Dipole',
         ui.layout_sidebar(
             ui.sidebar(
+                ui.markdown("""Explore interconnection with El Nino Southern Oscillation and Indian Ocean Dipole. 
+                            Use the slider to select the year range and the dropdown to select the year.
+                            The plots will update automatically."""),
                 ui.input_slider(
                     id='year_slide_enso', label='Year range', min=df.year.min(), max=df.year.max(), value=[df.year.min(),df.year.max()]
                 ),
+                ui.input_selectize(
+                    id='year_enso', label='Year', choices=YEARS, selected=YEARS[-1]
+                ),
+                open='open',
             ),
             ui.layout_columns(
                 ui.card(
-                    ui.div(enso_iod_txt),
+                    output_widget('plot_enso_iod'),
+                    full_screen=True
                 ),
                 ui.card(
-                    output_widget('plot_enso_iod'),
+                    ui.div(load_text.enso_iod_interconn),
+                ),
+                ui.card(
+                    output_widget('plot_rainfall_vs_mean'),
+                    full_screen=True
+                ),
+                ui.card(
+                    output_widget('plot_enso_iod_by_year'),
                     full_screen=True
                 ),
                 # ui.card(
@@ -95,9 +95,29 @@ app_ui = ui.page_navbar(
                 #     full_screen=True
                 # ),
                 # ui.card(
-                #     ui.div(corr_txt)
+                #     ui.div(load_text.corr)
                 # ),
-                col_widths=(12,12,8,4)
+                col_widths=(12,12,6,6)
+            )
+        ),
+    ),
+    ui.nav_panel(
+        'Rainy Seasons',
+        ui.layout_sidebar(
+            ui.sidebar(
+                ui.input_slider(
+                    id='season_threshold', label='Threshold', min=0, max=100, value=70, post='%'
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                    ui.div(load_text.failed_season),
+                ),
+                ui.card(
+                    output_widget('plot_failed_rains'),
+                    full_screen=True
+                ),
+                col_widths=(12,12)
             )
         ),
     ),
@@ -121,7 +141,7 @@ def server(input, output, session):
         df = load_data()
         df = df.groupby(['year']).agg({'rain':'sum'}).reset_index()
         df = df[(df.year>=input.year_slide()[0]) & (df.year<=input.year_slide()[1])]
-        title = f'Yearly Rainfall Mean | {min(df.year)} - {max(df.year)}'
+        title = f'Annual Precipitations | {min(df.year)} - {max(df.year)}'
 
         bar_chart = go.Bar(
             x=df.year,
@@ -163,16 +183,21 @@ def server(input, output, session):
     @render_widget
     def plot_rainfall_vs_mean():
         df = load_data()
-        df = df[(df.year>=input.year_slide()[0]) & (df.year<=input.year_slide()[1])]
-        title = f'Monthly Rainfall ({input.year()}) Vs. Mean ({min(df.year)} - {max(df.year)})'
+        # df = df[(df.year>=input.year_slide_enso()[0]) & (df.year<=input.year_slide_enso()[1])]
+        title = f'Monthly Rainfall ({input.year_enso()}) Vs. Mean ({min(df.year)} - {max(df.year)})'
+
+        df_melted = df[df.year==int(input.year_enso())].melt(id_vars='month', value_vars=['rain', 'rain_mean'])
+        df_melted['variable'] = df_melted['variable'].replace({'rain':'Rainfall', 'rain_mean':'Rainfall Mean'})
 
         fig = px.bar(
-            data_frame=df[df.year==int(input.year())].melt(id_vars='month', value_vars=['rain', 'rain_mean']),
+            data_frame=df_melted,
             x='month',
             y='value',
             barmode='group',
             color='variable',
             color_discrete_sequence=['blue','grey'],
+            labels={'variable':''},
+            opacity=.7,
             title=title
         )
 
@@ -180,7 +205,52 @@ def server(input, output, session):
         fig.update_yaxes(title='Rainfall [mm/month]')
 
         return fig
-   
+    
+    @render_widget
+    def plot_enso_iod_by_year():
+        df = load_data()
+        df_melted = df[df.year==int(input.year_enso())].melt(id_vars='month', value_vars=['enso', 'iod'])
+        df_melted['variable'] = df_melted['variable'].replace({'enso':'ENSO', 'iod':'IOD'})
+        title = f'Trend of ENSO and IOD Indices ({input.year_enso()})'
+
+        fig = px.bar(
+            data_frame=df_melted,
+            x='month',
+            y='value',
+            barmode='group',
+            color='variable',
+            color_discrete_sequence=['lightgreen', 'orange'],
+            labels={'variable':''},
+            opacity=.7,
+            title=title,
+        )
+
+        fig.update_xaxes(title=None, labelalias=dict(zip([1,2,3,4,5,6,7,8,9,10,11,12], MONTHS)), tickmode='linear', nticks=len(df.month.unique()))
+        fig.update_yaxes(title='ENSO/IOD [degC]')
+        return fig
+    
+    @render_widget
+    def plot_enso_iod():
+        df = load_data()
+        df = df[(df.year>=input.year_slide_enso()[0]) & (df.year<=input.year_slide_enso()[1])]
+        df['date'] = df.year.astype(str)+'-'+df.month.astype(str)
+        df.index=pd.to_datetime(df.date)
+        df.resample('ME').last()
+        df = df.rename(columns={'enso':'ENSO', 'iod':'IOD'})
+        title = f'Trend of ENSO and IOD Indices | {min(df.year)} - {max(df.year)}'
+
+        fig = px.bar(
+            data_frame=df,
+            y=['ENSO','IOD'],
+            barmode='group',
+            color_discrete_sequence=['lightgreen', 'orange'],
+            labels={'variable':''},
+            title=title,
+        )
+
+        fig.update_layout(xaxis_title=None,yaxis_title='ENSO/IOD [degC]')
+        return fig
+    
     @render_widget
     def plot_failed_rains():
         def failed_rainy_season(data_frame):
@@ -200,22 +270,6 @@ def server(input, output, session):
         )
 
         fig.update_layout(title=title,xaxis_title=None,yaxis_title='Rainfall [mm/season]')
-        return fig
-    
-    @render_widget
-    def plot_enso_iod():
-        df = load_data()
-        df = df.groupby(['year']).agg({'enso':'mean', 'iod':'mean'}).reset_index()
-        df = df[(df.year>=input.year_slide_enso()[0]) & (df.year<=input.year_slide_enso()[1])]
-        title = f'Trend of ENSO and IOD Indices | {min(df.year)} - {max(df.year)}'
-
-        fig = px.line(
-            data_frame=df,#.melt(id_vars='year', value_vars=['enso','iod']),
-            x='year',
-            y=['enso','iod'],
-        )
-
-        fig.update_layout(title=title,xaxis_title=None,yaxis_title='ENSO/IOD [degC]')
         return fig
     
     @render.plot
