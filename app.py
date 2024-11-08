@@ -23,9 +23,8 @@ app_ui = ui.page_navbar(
         ui.layout_sidebar(
             ui.sidebar(
                 ui.markdown("""Explore annual precipitations. 
-                            Use the slider to select the year range for calculating the mean, 
-                            and the dropdown to select the year for the monthly rainfall plot. 
-                            The plots will update automatically."""),
+                            Use the slider to select the year range, rainfall mean is calculated 
+                            accordingly. The plots will update automatically."""),
                 ui.input_slider(
                     id='year_slide', label='Year range', min=df.year.min(), max=df.year.max(), value=[df.year.min(),df.year.max()]
                 ),
